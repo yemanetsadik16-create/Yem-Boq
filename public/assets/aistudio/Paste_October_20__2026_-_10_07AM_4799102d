@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bill of Quantities — Building Cost Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --navy:#0F2C4C;
+    --navy-2:#173A5E;
+    --navy-3:#0A2038;
+    --slate:#4C5C6E;
+    --slate-light:#7A8A9B;
+    --paper:#EEF2F5;
+    --card:#FFFFFF;
+    --line:#D7E1EA;
+    --line-strong:#B9C7D3;
+    --amber:#E3A008;
+    --amber-dark:#A9740A;
+    --green:#2F7D5B;
+    --green-bg:#E8F3EE;
+    --red:#B3432B;
+    --ink:#0F1B24;
+    --ink-soft:#455467;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;overflow-x:hidden;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height:1.45;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:28px 28px;
+    background-attachment:fixed;
+  }
+  .num{ font-family:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace; font-variant-numeric:tabular-nums; }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    background:var(--navy-3);
+    color:#fff;
+    padding:14px 18px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    position:sticky;
+    top:0;
+    z-index:40;
+    border-bottom:3px solid var(--amber);
+  }
+  .topbar .titlewrap{ display:flex; align-items:center; gap:10px; flex:1 1 auto; min-width:0;}
+  .topbar .toolbar{ display:flex; gap:8px; flex:none; overflow-x:auto; -webkit-overflow-scrolling:touch; width:100%; }
+  @media (min-width:721px){
+    .topbar .toolbar{ width:auto; }
+  }
+  .topbar .mark{
+    width:34px;height:34px;border:2px solid var(--amber);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono';font-weight:600;font-size:13px;color:var(--amber);
+    flex:none;
+  }
+  .topbar h1{
+    font-size:15px;
+    font-weight:600;
+    margin:0;
+    letter-spacing:.2px;
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .topbar .sub{ font-size:11px;color:#A9BCCD;font-weight:400; display:block; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .topbar button{
+    background:transparent;
+    border:1px solid #33526e;
+    color:#dbe6ee;
+    padding:7px 10px;
+    font-size:12.5px;
+    border-radius:3px;
+    cursor:pointer;
+    font-family:inherit;
+    white-space:nowrap;
+    flex:none;
+  }
+  .topbar button:hover{ border-color:var(--amber); color:var(--amber);}
+  @media (max-width:720px){
+    .topbar{ padding:12px 14px; }
+    .topbar .sub{ display:none; }
+  }
+
+  /* ---------- Title block ---------- */
+  .titleblock{
+    max-width:1180px;
+    margin:22px auto 0;
+    padding:0 16px;
+  }
+  .tb-card{
+    background:var(--card);
+    border:1px solid var(--line-strong);
+    border-top:4px solid var(--navy);
+    box-shadow:0 1px 2px rgba(15,28,36,.06);
+  }
+  .tb-head{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    padding:20px 22px 14px;
+    border-bottom:1px solid var(--line);
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .tb-head h2{
+    margin:0; font-size:22px; letter-spacing:.3px; color:var(--navy-3); font-weight:700;
+  }
+  .tb-head p{ margin:4px 0 0; color:var(--ink-soft); font-size:13.5px; max-width:46ch;}
+  .tb-sheetno{
+    font-family:'IBM Plex Mono'; font-size:12px; color:var(--slate);
+    border:1px solid var(--line-strong); padding:6px 10px; text-align:center;
+  }
+  .tb-sheetno b{ display:block; color:var(--navy); font-size:14px;}
+  .tb-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:0;
+  }
+  .tb-field{
+    padding:12px 18px;
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .tb-field:nth-child(3n){ border-right:none; }
+  .tb-field label{
+    display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.7px;
+    color:var(--slate-light); margin-bottom:5px; font-weight:600;
+  }
+  .tb-field input{
+    width:100%; border:none; background:transparent; font-size:14.5px; color:var(--ink);
+    font-family:inherit; padding:2px 0; border-bottom:1px dashed transparent;
+  }
+  .tb-field input:focus{ outline:none; border-bottom:1px dashed var(--amber-dark); }
+
+  @media (max-width:720px){
+    .tb-grid{ grid-template-columns:repeat(2,1fr);}
+    .tb-field:nth-child(3n){ border-right:1px solid var(--line);}
+    .tb-field:nth-child(2n){ border-right:none;}
+    .tb-head{ flex-direction:column; align-items:flex-start;}
+  }
+
+  /* ---------- Layout ---------- */
+  .layout{
+    max-width:1180px; margin:0 auto; padding:18px 16px 120px;
+    display:grid; grid-template-columns:230px 1fr; gap:18px;
+  }
+  .layout > *{ min-width:0; }
+  @media (max-width:900px){
+    .layout{ grid-template-columns:1fr; }
+  }
+
+  /* Section nav */
+  .nav{ position:sticky; top:74px; align-self:start; }
+  .nav-list{ list-style:none; margin:0; padding:0; background:var(--card); border:1px solid var(--line-strong);}
+  .nav-list li a{
+    display:flex; justify-content:space-between; gap:8px;
+    padding:11px 13px; text-decoration:none; color:var(--ink-soft);
+    font-size:13px; font-weight:500; border-bottom:1px solid var(--line);
+    cursor:pointer;
+  }
+  .nav-list li:last-child a{ border-bottom:none;}
+  .nav-list li a:hover{ background:#F5F8FA; color:var(--navy);}
+  .nav-list li a.active{ background:var(--navy); color:#fff;}
+  .nav-list li a .amt{ font-family:'IBM Plex Mono'; font-size:11.5px; color:inherit; opacity:.75;}
+  .nav-tools{ margin-top:10px; display:flex; flex-direction:column; gap:6px;}
+  .nav-tools button{
+    background:var(--card); border:1px solid var(--line-strong); color:var(--slate);
+    padding:9px 10px; font-size:12.5px; text-align:left; cursor:pointer; font-family:inherit;
+  }
+  .nav-tools button:hover{ border-color:var(--navy); color:var(--navy);}
+
+  @media (max-width:900px){
+    .nav{ position:static; }
+    .nav-list{ display:flex; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+    .nav-list li{ flex:none; }
+    .nav-list li a{ border-bottom:none; border-right:1px solid var(--line); white-space:nowrap; flex-direction:row;}
+    .nav-list li a .amt{ margin-left:6px;}
+    .nav-tools{ flex-direction:row; flex-wrap:wrap; }
+    .nav-tools button{ flex:1 1 45%; }
+  }
+
+  /* Section content */
+  .section{ margin-bottom:26px; scroll-margin-top:70px;}
+  .section-head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+    padding:10px 2px; border-bottom:2px solid var(--navy); margin-bottom:10px;
+  }
+  .section-head h3{ margin:0; font-size:17px; color:var(--navy-3); font-weight:700;}
+  .section-head .stotal{ font-family:'IBM Plex Mono'; font-size:14px; color:var(--navy); font-weight:600;}
+
+  .group{ background:var(--card); border:1px solid var(--line-strong); margin-bottom:10px;}
+  .group-head{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:11px 14px; cursor:pointer; user-select:none;
+    border-left:4px solid var(--slate-light);
+  }
+  .group-head:hover{ border-left-color:var(--amber);}
+  .group-head h4{ margin:0; font-size:13.5px; font-weight:600; color:var(--ink);}
+  .group-head .g-right{ display:flex; align-items:center; gap:12px; flex:none;}
+  .group-head .g-total{ font-family:'IBM Plex Mono'; font-size:13px; color:var(--slate);}
+  .group-head .chev{ width:9px;height:9px;border-right:2px solid var(--slate-light);border-bottom:2px solid var(--slate-light); transform:rotate(45deg); transition:transform .15s;}
+  .group.open .chev{ transform:rotate(-135deg);}
+  .group-body{ display:none; border-top:1px solid var(--line);}
+  .group.open .group-body{ display:block; }
+
+  .row{
+    display:grid;
+    grid-template-columns:52px 1fr 60px 90px 110px 32px 120px;
+    gap:8px;
+    padding:10px 14px;
+    border-bottom:1px solid var(--line);
+    align-items:center;
+  }
+  .row:last-child{ border-bottom:none;}
+  .row.note{
+    grid-template-columns:1fr;
+    background:#FBFCFD;
+    color:var(--ink-soft);
+    font-size:12.5px;
+    font-style:italic;
+    padding:8px 14px 8px 30px;
+  }
+  .row .cno{ font-family:'IBM Plex Mono'; font-size:12px; color:var(--slate-light);}
+  .row .cdesc{ font-size:13.3px; color:var(--ink); }
+  .row .cunit{ font-size:11.5px; color:var(--slate); background:#EEF2F5; padding:3px 6px; text-align:center; border:1px solid var(--line);}
+  .row input[type=number]{
+    width:100%; padding:7px 8px; border:1px solid var(--line-strong); font-family:'IBM Plex Mono'; font-size:13px;
+    background:#fff; color:var(--ink); text-align:right;
+  }
+  .row input[type=number]:focus{ outline:none; border-color:var(--amber-dark); box-shadow:0 0 0 2px rgba(227,160,8,.15);}
+  .row input[type=number].linked{ background:var(--green-bg); border-color:var(--green); color:var(--green); font-weight:600;}
+  .row .camt{ font-family:'IBM Plex Mono'; font-size:13.5px; text-align:right; font-weight:600; color:var(--navy-3);}
+  .row.custom{ background:#FFFBF0; }
+  .row .cdesc input.customdesc{
+    width:100%; border:1px solid var(--line-strong); padding:6px 8px; font-size:13px; font-family:inherit;
+  }
+  .row .cunit input.customunit{
+    width:100%; border:1px solid var(--line-strong); padding:6px 4px; font-size:11.5px; text-align:center; font-family:inherit;
+  }
+  .row .rmbtn{
+    background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;line-height:1;padding:0 2px;
+  }
+  .tobtn{
+    width:30px; height:30px; border:1px solid var(--line-strong); background:#fff; color:var(--slate);
+    cursor:pointer; font-size:14px; line-height:1; border-radius:2px; flex:none;
+  }
+  .tobtn:hover{ border-color:var(--amber-dark); color:var(--amber-dark);}
+  .tobtn.active{ background:var(--navy); border-color:var(--navy); color:#fff;}
+
+  /* ---------- Take-off panel (measurement build-up) ---------- */
+  .takeoff-panel{
+    display:none;
+    background:#FCF8EC;
+    border-top:1px dashed var(--line-strong);
+    border-bottom:1px solid var(--line);
+    padding:10px 14px 12px 60px;
+  }
+  .takeoff-panel.open{ display:block; }
+  .to-head{ font-size:11.5px; color:var(--amber-dark); font-weight:600; text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px;}
+  .to-line{
+    display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;
+  }
+  .to-note{
+    flex:1 1 140px; min-width:0; border:1px solid var(--line-strong); padding:6px 8px; font-size:12px; font-family:inherit;
+  }
+  .to-dims{ display:flex; gap:5px; flex:none; }
+  .to-dims input{
+    width:64px; border:1px solid var(--line-strong); padding:6px 5px; font-family:'IBM Plex Mono'; font-size:12px; text-align:right;
+  }
+  .to-lineresult{ font-family:'IBM Plex Mono'; font-size:12.5px; font-weight:600; color:var(--navy); width:74px; text-align:right; flex:none;}
+  .bar-kgm-badge{
+    font-family:'IBM Plex Mono'; font-size:11px; color:var(--slate); background:#EEF2F5;
+    padding:6px 8px; border:1px solid var(--line); white-space:nowrap; flex:none;
+  }
+  .bar-kgm{
+    width:70px; border:1px solid var(--line-strong); padding:6px 5px; font-family:'IBM Plex Mono'; font-size:12px; text-align:right; flex:none;
+  }
+  .to-rmline{ background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;flex:none;}
+  .to-addline{
+    background:none; border:1px dashed var(--line-strong); color:var(--slate);
+    padding:5px 9px; font-size:11.5px; cursor:pointer; font-family:inherit; margin-top:2px;
+  }
+  .to-addline:hover{ border-color:var(--amber-dark); color:var(--amber-dark);}
+  .to-total-row{
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;
+    margin-top:8px; padding-top:8px; border-top:1px solid #EBD9A8; font-size:12px; color:var(--ink-soft);
+  }
+  .to-total{ color:var(--green); }
+  .to-clear{ background:none; border:none; color:var(--slate-light); text-decoration:underline; font-size:11.5px; cursor:pointer; font-family:inherit;}
+  .to-clear:hover{ color:var(--red); }
+
+  .group-foot{ display:flex; justify-content:flex-end; align-items:center; gap:10px; padding:8px 14px; background:#F7F9FA;}
+  .addrow-btn{
+    background:none; border:1px dashed var(--line-strong); color:var(--slate);
+    padding:6px 10px; font-size:12px; cursor:pointer; font-family:inherit; margin:8px 14px 12px;
+  }
+  .addrow-btn:hover{ border-color:var(--amber-dark); color:var(--amber-dark);}
+
+  @media (max-width:640px){
+    .row{ grid-template-columns:1fr; gap:4px; padding:12px 14px;}
+    .row.note{ padding:8px 14px;}
+    .row .cno{ display:inline-block; margin-right:6px;}
+    .row .cdesc{ margin-bottom:6px;}
+    .row .inline-mobile{ display:flex; gap:8px; align-items:center;}
+    .row .cunit{ flex:none; }
+    .row input[type=number]{ text-align:left;}
+    .row .camt{ text-align:left; margin-top:2px; padding-top:4px; border-top:1px dashed var(--line);}
+    .takeoff-panel{ padding:10px 14px 12px; }
+    .to-line{ flex-direction:column; align-items:stretch; border-bottom:1px dashed #EBD9A8; padding-bottom:8px;}
+    .to-note{ flex:none; width:100%; }
+    .to-dims{ flex:none; width:100%; }
+    .to-dims input{ flex:1 1 0; width:0; min-width:0; }
+    .bar-kgm-badge, .bar-kgm{ width:100%; text-align:left; }
+    .to-line .to-lineresult{ width:auto; text-align:left; }
+  }
+
+  /* Ancillary section */
+  .anc-row{
+    display:grid; grid-template-columns:1fr 140px 34px; gap:8px; align-items:center;
+    padding:10px 14px; border-bottom:1px solid var(--line);
+  }
+  .anc-row input{ min-width:0; }
+  .anc-row input[type=text]{ border:1px solid var(--line-strong); padding:7px 8px; font-family:inherit; font-size:13px;}
+  .anc-row input[type=number]{ border:1px solid var(--line-strong); padding:7px 8px; font-family:'IBM Plex Mono'; text-align:right; font-size:13px;}
+  @media (max-width:560px){
+    .anc-row{ grid-template-columns:1fr; }
+  }
+
+  /* ---------- Summary ---------- */
+  .summary-desktop{
+    background:var(--card); border:1px solid var(--line-strong); border-top:4px solid var(--amber);
+    position:sticky; top:74px; margin-top:14px;
+  }
+  .summary-desktop h4{ margin:0; padding:12px 14px; font-size:13px; letter-spacing:.4px; text-transform:uppercase; color:var(--navy-3); border-bottom:1px solid var(--line); font-weight:700;}
+  .sline{ display:flex; justify-content:space-between; gap:8px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12.8px; color:var(--ink-soft); align-items:center;}
+  .sline b{ font-family:'IBM Plex Mono'; color:var(--ink); font-weight:600; font-size:12.8px;}
+  .sline.pct-row input{ width:46px; border:1px solid var(--line-strong); font-family:'IBM Plex Mono'; text-align:right; padding:3px 4px; font-size:12px;}
+  .sline.grand{ background:var(--navy-3); color:#fff; padding:14px; }
+  .sline.grand span{ font-size:12.5px; text-transform:uppercase; letter-spacing:.4px; color:#BFD2E0;}
+  .sline.grand b{ color:var(--amber); font-size:18px; display:block; margin-top:2px;}
+
+  @media (max-width:900px){
+    .summary-desktop{ display:none; }
+  }
+
+  /* Mobile summary bar */
+  .mobile-bar{
+    display:none;
+    position:fixed; left:0; right:0; bottom:0; z-index:50;
+    background:var(--navy-3); color:#fff; border-top:3px solid var(--amber);
+  }
+  .mobile-bar .mb-head{
+    display:flex; justify-content:space-between; align-items:center; padding:11px 16px; cursor:pointer;
+  }
+  .mobile-bar .mb-head .lbl{ font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#9FB6C8;}
+  .mobile-bar .mb-head .val{ font-family:'IBM Plex Mono'; font-size:17px; color:var(--amber); font-weight:600;}
+  .mobile-bar .mb-head .arrow{ width:8px;height:8px;border-right:2px solid #9FB6C8;border-top:2px solid #9FB6C8; transform:rotate(-45deg); transition:transform .15s;}
+  .mobile-bar.open .mb-head .arrow{ transform:rotate(135deg);}
+  .mobile-bar .mb-body{ display:none; padding:0 16px 14px; max-height:55vh; overflow-y:auto;}
+  .mobile-bar.open .mb-body{ display:block;}
+  .mobile-bar .sline{ border-bottom:1px solid #1F3F5C; color:#C7D6E2; padding:8px 0;}
+  .mobile-bar .sline b{ color:#fff;}
+  .mobile-bar .sline.pct-row input{ background:#0F2740; border-color:#2A4A66; color:#fff;}
+
+  @media (max-width:900px){
+    .mobile-bar{ display:block; }
+  }
+
+  /* Print */
+  @media print{
+    .topbar, .mobile-bar, .addrow-btn, .rmbtn, .group-foot, .nav-list, .nav-tools, .tobtn, .to-addline, .to-clear, .to-rmline{ display:none !important;}
+    body{ background:#fff; }
+    .layout{ display:block; padding:0;}
+    .nav{ position:static; width:100%; margin-bottom:16px; }
+    .group-body{ display:block !important;}
+    .group{ break-inside:avoid;}
+    .section-head{ break-after:avoid; break-inside:avoid; }
+    .section + .section{ break-before: page; page-break-before: always; }
+    input{ border:none !important; background:transparent !important; -moz-appearance:textfield; }
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; margin:0; }
+    .summary-desktop{ display:block !important; position:static; max-width:420px; }
+    .takeoff-panel{ display:none; }
+    .takeoff-panel:has(.to-line){ display:block !important; break-inside:avoid; }
+  }
+
+  .foot-note{ max-width:1180px; margin:10px auto 40px; padding:0 16px; font-size:11.5px; color:var(--slate-light); text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="titlewrap">
+    <div class="mark">BQ</div>
+    <div style="min-width:0;">
+      <h1>Bill of Quantities — Universal Building Cost Estimator</h1>
+      <span class="sub">Fill in quantities &amp; rates for your own project</span>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button id="btnExpandAll">Expand all</button>
+    <button id="btnPrint">Print / PDF</button>
+    <button id="btnExcel">Export Excel</button>
+    <button id="btnReset">Reset</button>
+  </div>
+</div>
+
+<div class="titleblock">
+  <div class="tb-card">
+    <div class="tb-head">
+      <div>
+        <h2>Bill of Quantities</h2>
+        <p>A standardised item list covering substructure, superstructure, finishes and services — enter your own quantities and unit rates below to generate a full cost estimate for any building.</p>
+      </div>
+      <div class="tb-sheetno">Sheet No.<b id="sheetDate">—</b></div>
+    </div>
+    <div class="tb-grid">
+      <div class="tb-field"><label>Project</label><input id="fProject" type="text" placeholder="e.g. G+2 Residential Building" value="G+2 Micro Cluster Building"></div>
+      <div class="tb-field"><label>Location</label><input id="fLocation" type="text" placeholder="Town / Region" value=""></div>
+      <div class="tb-field"><label>Client</label><input id="fClient" type="text" placeholder="Client name" value=""></div>
+      <div class="tb-field"><label>Contractor</label><input id="fContractor" type="text" placeholder="Contractor name" value=""></div>
+      <div class="tb-field"><label>Consultant</label><input id="fConsultant" type="text" placeholder="Consultant / Engineer" value=""></div>
+      <div class="tb-field"><label>Currency</label><input id="fCurrency" type="text" placeholder="e.g. ETB, USD" value="ETB"></div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <div class="nav">
+    <ul class="nav-list" id="navList"></ul>
+    <div class="nav-tools">
+      <button id="btnExpandAll2">Expand all sections</button>
+      <button id="btnCollapseAll">Collapse all</button>
+    </div>
+  </div>
+
+  <div id="sections"></div>
+
+</div>
+
+<div class="foot-note">All quantities and rates default to zero — this is a blank estimating template. Item descriptions follow a standard building specification and apply to most residential and institutional building types; add custom items where a project needs something outside the standard list. Click the 📐 icon next to any Qty field to build that quantity from measured dimensions, or the Ø icon on reinforcement items to build the weight from a bar schedule (length × no. of bars × no. of members × unit weight) — the way traditional take-off and bar-schedule sheets work.</div>
+
+<!-- Desktop summary lives inside layout via JS injection target -->
+<div style="display:none" id="summaryTemplateHolder"></div>
+
+<div class="mobile-bar" id="mobileBar">
+  <div class="mb-head" id="mobileBarHead">
+    <div><span class="lbl">Grand Total</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="val num" id="mGrandTotal">0.00</span>
+      <span class="arrow"></span>
+    </div>
+  </div>
+  <div class="mb-body" id="mobileBarBody"></div>
+</div>
+
+<script>
+/* =======================================================================
+   DATA — item list drawn from the source Bill of Quantities.
+   row types: 'note' (heading/context text, no inputs) | 'item' (fillable)
+   ======================================================================= */
+const BOQ = [
+  { id:'A', title:'A — Sub-Structure', groups:[
+    { title:'1. Excavation & Earthwork', rows:[
+      {no:'1.1', t:'Excavate over site to remove all objectionable materials to an average depth of 20cm. Area of excavation includes pavement around the building.', u:'m²'},
+      {no:'1.2', t:'Bulk excavation in ordinary soil from the reduced level to an average depth of 50cm below.', u:'m³'},
+      {no:'1.3', t:'50cm thick trench excavation in ordinary soil for stone masonry foundation wall, to a depth of 250cm starting from reduced level.', u:'m³'},
+      {no:'1.4', t:'Pit excavation for isolated footing foundation in ordinary soil, to a depth of 300cm starting from reduced level.', u:'m³'},
+      {no:'1.5', t:'Backfill under hard core, around masonry trench and around isolated footing, with good dry selected material, not exceeding 25cm layers.', u:'m³'},
+      {no:'1.6', t:'Cart away surplus excavated material and deposit at a suitable distance.', u:'m³'},
+      {no:'1.7', t:'25cm thick basaltic (or equivalent) stone hard core, well rolled, consolidated and blinded with crushed stone.', u:'m²'},
+    ]},
+    { title:'2. Concrete Work', rows:[
+      {n:true, t:'5cm thick lean concrete, grade C-5, minimum cement content 150kg/m³:'},
+      {no:'2.1a', t:'Under footing pad.', u:'m²'},
+      {no:'2.1b', t:'Under masonry and grade beam.', u:'m²'},
+      {no:'2.1c', t:'Under hard core.', u:'m²'},
+      {n:true, t:'Reinforced concrete grade C-25, 360kg cement/m³, filled into formwork and vibrated around reinforcement bars (steel and formwork measured separately):'},
+      {no:'2.2a', t:'Footing pad.', u:'m³'},
+      {no:'2.2b', t:'Foundation column.', u:'m³'},
+      {no:'2.2c', t:'Grade beam.', u:'m³'},
+      {no:'2.2d', t:'10cm thick ground floor slab.', u:'m²'},
+      {n:true, t:'Provide, cut and fix in position sawn Zigba wood or metal panel formwork:'},
+      {no:'2.4a', t:'Footing pad.', u:'m²'},
+      {no:'2.4b', t:'Foundation column.', u:'m²'},
+      {no:'2.4c', t:'Grade beam.', u:'m²'},
+      {n:true, t:'Reinforcement bar to structural drawings — price includes cutting, bending, placing in position and tying wire:'},
+      {no:'2.5a', t:'8mm diameter deformed bars.', u:'kg'},
+      {no:'2.5b', t:'14mm diameter deformed bars.', u:'kg'},
+      {no:'2.5c', t:'16mm diameter deformed bars.', u:'kg'},
+      {no:'2.5d', t:'20mm diameter deformed bars.', u:'kg'},
+    ]},
+    { title:'3. Masonry Work', rows:[
+      {no:'3.1', t:'50cm thick hard trachytic (or equivalent) stone masonry foundation wall, bedded in cement mortar (1:4), below natural ground level.', u:'m³'},
+      {no:'3.2', t:'Ditto, but above natural ground level.', u:'m³'},
+      {no:'3.3', t:'Ditto (1:4), but for steps.', u:'m³'},
+    ]},
+  ]},
+  { id:'B', title:'B — Super-Structure', groups:[
+    { title:'1. Concrete Work', rows:[
+      {n:true, t:'Reinforced concrete grade C-25, 360kg cement/m³, filled into formwork and vibrated around reinforcement bars (steel and formwork measured separately):'},
+      {no:'1.1a', t:'Elevation column.', u:'m³'},
+      {no:'1.1b', t:'Intermediate and top tie beam.', u:'m³'},
+      {no:'1.1c', t:'15cm thick solid slab.', u:'m³'},
+      {no:'1.1d', t:'Stair case and landing.', u:'m³'},
+      {n:true, t:'Provide, cut and fix in position metal panel or sawn Zigba wood formwork:'},
+      {no:'1.2a', t:'Elevation column.', u:'m²'},
+      {no:'1.2b', t:'Intermediate and top tie beam.', u:'m²'},
+      {no:'1.2c', t:'15cm thick solid slab.', u:'m²'},
+      {no:'1.2d', t:'Stair case and landing.', u:'m²'},
+      {n:true, t:'Reinforcement bar to structural drawings — price includes cutting, bending, placing in position and tying wire:'},
+      {no:'1.3a', t:'8mm diameter deformed bars.', u:'kg'},
+      {no:'1.3b', t:'10mm diameter deformed bars.', u:'kg'},
+      {no:'1.3c', t:'12mm diameter deformed bars.', u:'kg'},
+      {no:'1.3d', t:'14mm diameter deformed bars.', u:'kg'},
+      {no:'1.3e', t:'16mm diameter deformed bars.', u:'kg'},
+    ]},
+    { title:'2. Block Work', rows:[
+      {no:'2.1', t:'20cm thick class-B HCB wall, bedded and jointed in cement mortar mix 1:3, both sides left for plaster.', u:'m²'},
+      {no:'2.2', t:'Ditto, but 15cm thick class-B HCB wall.', u:'m²'},
+    ]},
+    { title:'3. Roofing Work', rows:[
+      {no:'3.1', t:'C-30 roof cover in corrugated galvanised iron sheet (CIS), fixed to wooden purlins with dome-headed nails; price includes ridge cap (purlins and roof measured in horizontal projection with all accessories).', u:'m²'},
+      {no:'3.2', t:'Supply and fix G-30 galvanised flat metal sheet gutter as per detail drawing; price includes all accessories, metal bracket suspenders, one coat anti-rust paint and two coats synthetic enamel paint.', u:'ml'},
+      {no:'3.3', t:'Down pipe fixed to RC column with metal strap, at 100cm centres.', u:'ml'},
+    ]},
+    { title:'4. Carpentry & Joinery Work', rows:[
+      {n:true, t:'Eucalyptus truss — all structural members painted 2 coats anti-termite paint, well seasoned, each truss fixed to RC beam with 6mm plain bar (spacing per drawing):'},
+      {no:'4.1a', t:'12cm upper and lower chord.', u:'ml'},
+      {no:'4.1b', t:'10cm diagonal and vertical members.', u:'ml'},
+      {no:'4.1c', t:'5x7cm Zigba wood purlin.', u:'ml'},
+      {no:'4.2', t:'Supply and fix flush wooden door with Tid wood frames, both sides covered with best quality 4mm thick plywood; price includes all necessary accessories. Door D1, size 70 x 210cm.', u:'pcs'},
+    ]},
+    { title:'5. Metal Work', rows:[
+      {n:true, t:'Supply and fix metal door and window made of imitation profile with grill, fabricated from manufactured tubular steel profile, approved cylindrical lock as per drawing — price includes all necessary work (Doors):'},
+      {no:'5.1a', t:'Door D1, size 90 x 300cm.', u:'pcs'},
+      {no:'5.1b', t:'Combined door & window DW1, size 253 x 300cm.', u:'pcs'},
+      {no:'5.1c', t:'Fire door FD1, size 375 x 300cm.', u:'pcs'},
+      {no:'5.1d', t:'Fire door FD2, size 165 x 300cm.', u:'pcs'},
+      {no:'5.2', t:'Supply and fix metal window made of imitation profile with grill, complete with all accessories, including 1 coat anti-rust and 2 coats synthetic paint. Type W-1, size 60 x 60cm.', u:'pcs'},
+      {n:true, t:'Supply and fix metal balustrade for corridor to schedule — main post 40x40x2.5mm RHS fixed to slab by cement grouting at 1.5m c/c; horizontal frame 30x30x2.5mm RHS fixed to column at 40cm c/c; central panel RHS 25x25x2mm; price includes cutting, welding and 3 coats synthetic paint over anti-rust primer:'},
+      {no:'5.3a', t:'RHS 40 x 40 x 2.5mm.', u:'kg'},
+      {no:'5.3b', t:'RHS 30 x 30 x 2.5mm.', u:'kg'},
+      {no:'5.3c', t:'RHS 25 x 25 x 2mm.', u:'kg'},
+      {n:true, t:'Supply and fix metal balustrade with Kararo wood handrail for stair case:'},
+      {no:'5.4a', t:'RHS 40 x 40 x 2.5mm.', u:'kg'},
+      {no:'5.4b', t:'RHS 30 x 30 x 2.5mm.', u:'kg'},
+      {no:'5.4c', t:'Kararo wooden handrail, size 40 x 60mm, screwed at 30cm centres to RHS section.', u:'ml'},
+      {no:'5.4d', t:'15 x 2.5cm nicely planed and polished Kararo wood strings.', u:'ml'},
+    ]},
+    { title:'6. Finishing Work', rows:[
+      {no:'6.1', t:'Apply three coats plaster in cement mortar mix 1:3 to fine finish, to all internal surfaces, exposed concrete columns and beams.', u:'m²'},
+      {no:'6.2', t:'Ditto, but to external wall surface.', u:'m²'},
+      {no:'6.3', t:'Ditto, but to solid slab.', u:'m²'},
+      {no:'6.4', t:'Apply three coats tyrolean rendering to exterior surface (machine rendering).', u:'m²'},
+      {no:'6.5', t:'Supply and fix plastic ceiling on 4x5cm Zigba wood buttons at 60cm centres both ways; price includes ceiling button and angle trim.', u:'m²'},
+      {no:'6.6', t:'30cm tread and 20cm riser marble for stair case.', u:'ml'},
+      {no:'6.7', t:'3cm thick marble window sill, 30cm wide, bedded in cement and sand mortar mix (1:3).', u:'ml'},
+      {no:'6.8', t:'Supply and fix 30 x 30cm non-slip ceramic tile floor finish, bedded and joints grouted in cement/sand mortar (1:3), for verandah, stair and lobby.', u:'m²'},
+      {no:'6.9', t:'Ditto, but 15 x 15cm ceramic wall tile for shower room.', u:'m²'},
+      {no:'6.10', t:'Ditto, but cement concrete terrazzo tile floor finish.', u:'m²'},
+      {no:'6.11', t:'10cm high ceramic tile skirting, stuck down with cement/sand mortar (1:3).', u:'ml'},
+      {no:'6.12', t:'Supply and lay 110cm wide, 10cm thick mass concrete C-15 pavement around the building, including crushed stone and 10cm thick compacted red ash.', u:'m²'},
+      {no:'6.13', t:'Supply and fix open ditch with half cement-concrete pipe, d=40cm, bedded and jointed in 1:3 mortar; price includes selected material fill.', u:'ml'},
+    ]},
+    { title:'7. Glazing Work', rows:[
+      {no:'7.1', t:'Supply and fix 6mm thick ordinary clear sheet glass, glazed to metal casement with putty.', u:'m²'},
+    ]},
+    { title:'8. Painting Work', rows:[
+      {n:true, t:'Prepare surface and apply three coats plastic emulsion paint of chosen type and colour to:'},
+      {no:'8.1', t:'Internal plastered surface and exposed concrete column and beam.', u:'m²'},
+      {no:'8.2', t:'Ditto, but external plastered wall surface.', u:'m²'},
+      {no:'8.3', t:'Ditto, but rendered wall.', u:'m²'},
+      {no:'8.4', t:'Ditto, but quartzite paint to external wall.', u:'m²'},
+      {no:'8.5', t:'Ditto, but solid slab.', u:'m²'},
+      {no:'8.6', t:'Ditto, but synthetic paint to metal door and window.', u:'m²'},
+    ]},
+    { title:'9. Sanitary Installation — Interior', rows:[
+      {n:true, t:'Water supply pipes and fittings — supply and install galvanised steel pipes from elevated water tank to cold/hot water distribution, to all sanitary fixtures shown on drawing:'},
+      {no:'9.1a', t:'Diameter 15mm.', u:'ml'},
+      {no:'9.1b', t:'Diameter 20mm.', u:'ml'},
+      {n:true, t:'Supply and install gate valves, brass, complete with rubber gaskets, hand wheels and connecting pieces (unions etc.) for all fixtures:'},
+      {no:'9.2a', t:'Diameter 15mm.', u:'pcs'},
+      {no:'9.2b', t:'Diameter 20mm.', u:'pcs'},
+      {n:true, t:'Elevated water tank — supply and mount 8m³ fibreglass water tank on roof, complete with all accessories:'},
+      {no:'9.3a', t:'Water tank, size 4 x 2m.', u:'pc'},
+      {no:'9.3b', t:'32mm brass gate valve for outlet pipe.', u:'pcs'},
+      {no:'9.3c', t:'32mm brass gate valve for drain pipe.', u:'pcs'},
+      {no:'9.3d', t:'32mm brass gate valve for inlet pipe.', u:'pcs'},
+      {no:'9.3e', t:'40mm PVC float valve.', u:'pcs'},
+      {no:'9.3f', t:'50mm PVC vent pipe with vent cap, 30cm length.', u:'pcs'},
+      {no:'9.3g', t:'32mm drain and overflow galvanised steel pipe.', u:'ml'},
+      {no:'9.3h', t:'Roto stand made of concrete pole and slab.', u:'lump'},
+      {n:true, t:'Sanitary fixtures:'},
+      {no:'9.4', t:'Supply and install low-level water closet, white glazed vitreous china WC pan, approved quality, complete with all accessories.', u:'pcs'},
+      {no:'9.5', t:'Supply and install hand wash basin, white vitreous china, two tap holes, complete with all accessories. Size 500 x 405mm.', u:'pcs'},
+      {no:'9.6', t:'Supply and install white glazed steel/cast-iron shower tray with slip-resistant base, 15mm chrome-plated shower mixer with hot & cold taps, concealed riser tube, chrome-plated shower arm and swivel spray head, 38mm brass waste drain with chrome grate, 38mm uPVC trap. Size 900 x 900mm.', u:'pcs'},
+      {no:'9.7', t:'Supply and install single tubular chrome-plated swing towel hanger with chrome-plated fastening screws, complete with all accessories.', u:'pcs'},
+      {no:'9.8', t:'Supply and fix toilet paper holder, white vitreous china, complete with all accessories.', u:'pcs'},
+      {no:'9.9', t:'Supply and fix crystal glass mirror, 500 x 400mm, including chrome-plated brass clips and screws.', u:'pcs'},
+      {n:true, t:'Waste water & ventilation pipe:'},
+      {no:'9.10', t:'Supply and fix water heater complete with all accessories, capacity 25 litres.', u:'pcs'},
+      {no:'9.11', t:'Supply and install waste and vent pipe, horizontal branches and vertical stacks, PVC, including fittings (bends, branches, tees, elbows); horizontal branches laid at 2% slope. Diameter 50mm.', u:'ml'},
+      {no:'9.12', t:'Supply and install vent caps, PVC, at vent pipes fitted with PVC roof weathering slate at roof level. Diameter 50mm.', u:'pc'},
+    ]},
+    { title:'9. Sanitary Installation — Site Works', rows:[
+      {no:'9.13', t:'Construct sanitary manholes on domestic sewer line, double brick wall on mass concrete base slab 150mm thick, proper slope for smooth flow, 80mm RC slab cover with steel bar handle as per detail drawing. Size 60 x 60cm, average depth 60cm.', u:'pc'},
+      {no:'9.14', t:'Supply and lay hard plastic sewerage pipe as per drawing. Diameter 150mm.', u:'ml'},
+      {no:'9.15', t:'Supply and install galvanised steel pipe from main line to roof fibreglass water tank, complete with all accessories. Diameter 32mm.', u:'ml'},
+    ]},
+    { title:'10. Electrical Installation', rows:[
+      {n:true, t:'Power intake — underground ducts/pipes:'},
+      {no:'10.1', t:'PVC pipe, 50mm diameter.', u:'ml'},
+      {n:true, t:'Manhole:'},
+      {no:'10.2', t:'Construct manhole in brick with internal concrete base 600 x 600 x 600mm, including concrete cover with lifting hole.', u:'no'},
+      {n:true, t:'Low voltage system earthing:'},
+      {no:'10.3', t:'2400 x 16mm copper-clad earthing rod inside 600 x 600 x 600mm pit (pit measured elsewhere).', u:'no'},
+      {no:'10.4', t:'1 x 16 sq.mm bare copper bonding conductor, from earth bar to MLPP-TP3 earthing terminal.', u:'ml'},
+      {n:true, t:'Distribution board:'},
+      {no:'10.5', t:'Flush-mounted distribution board LPP-TF, engraved identification tag, sheet-steel enclosure with lockable door, 63A 3-phase bus bars with all fixing/connecting accessories — 2 no. 10A MCB 1ph 6kA, 10 no. 16A MCB 1ph 10kA, 1 no. main 32A MCB 3ph 10kA, with 25% reserve capacity.', u:'no'},
+      {no:'10.6', t:'Flush-mounted sub distribution board MDB with lockable door, 400A/3ph bus rating, complete with 1 no. MCCB 320A/3ph Icu=16kA, 5 no. MCB 63A/3ph Icu=10kA, 8 no. MCB 25A/3ph Icu=10kA, with 20% reserve space.', u:'no'},
+      {n:true, t:'Feeder cable and PVC pipe:'},
+      {no:'10.7', t:'Cable, 5 x 10 sq.mm, from MLPP-TP3 to LPP-LF.', u:'ml'},
+      {no:'10.8', t:'PVC pipe, 32mm diameter.', u:'ml'},
+      {n:true, t:'Light points:'},
+      {no:'10.9', t:'Light point fed through PVC-insulated conductor 2 x 2.5 sq.mm in 16mm diameter thermoplastic conduit, in/under surface, including junction boxes, screw-type connectors, insulating caps and cover, with all accessories.', u:'no'},
+      {n:true, t:'Switches — flush-mounted Legrand Suno range (or equivalent) with matching box:'},
+      {no:'10.10', t:'Single pole.', u:'no'},
+      {no:'10.11', t:'Double pole.', u:'no'},
+      {n:true, t:'Socket outlet point:'},
+      {no:'10.12', t:'Socket outlet point, flush mounting, fed through PVC conductor 3 x 2.5 sq.mm in 16mm diameter thermoplastic conduit (or 3 x 4 sq.mm in 21mm diameter), including junction boxes, screw-type connectors and cover, complete.', u:'no'},
+      {no:'10.13', t:'Telephone point — conduit 19–29mm diameter, outlet box, pull wire and telephone terminal box, per ETC rules and regulations.', u:'no'},
+    ]},
+  ]},
+];
+
+/* Ancillary structures — carried as lump-sum lines (e.g. septic tank, referenced
+   in the original file from a separate take-off) plus space for site-specific items */
+const ANCILLARY_DEFAULTS = [
+  { desc:'Septic tank & manhole (complete, per site take-off)', amt:0 },
+];
+
+/* =======================================================================
+   STATE + RENDER
+   ======================================================================= */
+let state = { customCounter:0 };
+
+function fmt(n){
+  if(!isFinite(n)) n=0;
+  return n.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function currency(){ return (document.getElementById('fCurrency').value || 'ETB').trim() || 'ETB'; }
+function val(id){ const el = document.getElementById(id); return el ? el.value : ''; }
+
+function buildNav(){
+  const nav = document.getElementById('navList');
+  nav.innerHTML = '';
+  BOQ.forEach(sec=>{
+    const li = document.createElement('li');
+    li.innerHTML = `<a data-target="sec-${sec.id}"><span>${sec.title}</span><span class="amt num" id="navamt-${sec.id}">0.00</span></a>`;
+    nav.appendChild(li);
+  });
+  const liAnc = document.createElement('li');
+  liAnc.innerHTML = `<a data-target="sec-ANC"><span>Ancillary Structures</span><span class="amt num" id="navamt-ANC">0.00</span></a>`;
+  nav.appendChild(liAnc);
+
+  nav.querySelectorAll('a').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+}
+
+/* Take-off dimension configuration per unit — mirrors a traditional
+   quantity take-off sheet: No. (count) x Length x Width x Height/Depth */
+const DIM_CONFIG = {
+  'm³': ['No.','L (m)','W (m)','H (m)'],
+  'm²': ['No.','L (m)','W (m)'],
+  'ml':  ['No.','L (m)'],
+};
+function dimsForUnit(u){ return DIM_CONFIG[u] || ['No.']; }
+
+/* Detect a rebar diameter mentioned in an item's own description, e.g.
+   "8mm diameter deformed bars" -> 8. Used to auto-fill the standard
+   unit weight (kg/m = d²/162) in the bar schedule, exactly as a
+   reinforcement bar-schedule sheet does. */
+function detectDiameter(text){
+  const m = text.match(/(\d+(?:\.\d+)?)\s*mm\s*diameter/i);
+  return m ? parseFloat(m[1]) : null;
+}
+function barUnitWeight(dia){ return (dia*dia)/162; }
+function panelTypeForUnit(u){ return u === 'kg' ? 'bar' : 'dims'; }
+
+function rowTemplate(row, gi, ri){
+  if(row.n){
+    return `<div class="row note">${row.t}</div>`;
+  }
+  const key = `${gi}-${ri}`;
+  const type = panelTypeForUnit(row.u);
+  const dia = type === 'bar' ? detectDiameter(row.t) : null;
+
+  let headText, totalLabel;
+  if(type === 'bar'){
+    headText = dia
+      ? `Bar schedule — Ø${dia}mm deformed bar (standard unit weight ${barUnitWeight(dia).toFixed(3)} kg/m) × length × no. of bars × no. of members`
+      : `Section weight schedule — enter the unit weight (kg/m) for this steel section, then length × no. of pieces × no. of members`;
+    totalLabel = 'Total weight';
+  } else {
+    headText = `Take-off — build this quantity from measurements (${row.u})`;
+    totalLabel = 'Take-off total';
+  }
+
+  return `
+    <div class="row" data-gi="${gi}" data-ri="${ri}" data-key="${key}">
+      <div class="cno">${row.no}</div>
+      <div class="cdesc">${row.t}</div>
+      <div class="inline-mobile">
+        <div class="cunit">${row.u}</div>
+        <input type="number" min="0" step="any" class="qty" placeholder="Qty" value="">
+      </div>
+      <div class="inline-mobile">
+        <input type="number" min="0" step="any" class="rate" placeholder="Rate" value="">
+        <button class="tobtn" data-row="${key}" title="${type==='bar' ? 'Build weight from a bar schedule' : 'Build quantity from measurements (take-off)'}">${type==='bar' ? 'Ø' : '📐'}</button>
+      </div>
+      <div class="camt num">0.00</div>
+    </div>
+    <div class="takeoff-panel" id="to-${key}" data-unit="${row.u}" data-type="${type}" data-dia="${dia||''}">
+      <div class="to-head">${headText}</div>
+      <div class="to-lines"></div>
+      <button class="to-addline" data-row="${key}">+ Add line</button>
+      <div class="to-total-row">
+        <span>${totalLabel}: <b class="to-total num">0.00</b> ${row.u} → used as Qty</span>
+        <button class="to-clear" data-row="${key}">Clear &amp; enter Qty manually</button>
+      </div>
+    </div>`;
+}
+
+function buildSections(){
+  const wrap = document.getElementById('sections');
+  wrap.innerHTML = '';
+  BOQ.forEach(sec=>{
+    const secEl = document.createElement('div');
+    secEl.className = 'section';
+    secEl.id = `sec-${sec.id}`;
+    let groupsHtml = '';
+    sec.groups.forEach((g, gi)=>{
+      let rowsHtml = '';
+      g.rows.forEach((row, ri)=>{ rowsHtml += rowTemplate(row, `${sec.id}-${gi}`, ri); });
+      groupsHtml += `
+        <div class="group" data-secid="${sec.id}" data-gid="${sec.id}-${gi}">
+          <div class="group-head">
+            <h4>${g.title}</h4>
+            <div class="g-right"><span class="g-total num">0.00</span><span class="chev"></span></div>
+          </div>
+          <div class="group-body">
+            <div class="rowset">${rowsHtml}</div>
+            <button class="addrow-btn" data-add="${sec.id}-${gi}">+ Add custom item to this group</button>
+          </div>
+        </div>`;
+    });
+    secEl.innerHTML = `
+      <div class="section-head"><h3>${sec.title}</h3><span class="stotal num" id="stotal-${sec.id}">0.00</span></div>
+      ${groupsHtml}`;
+    wrap.appendChild(secEl);
+  });
+
+  // Ancillary section
+  const ancEl = document.createElement('div');
+  ancEl.className = 'section';
+  ancEl.id = 'sec-ANC';
+  ancEl.innerHTML = `
+    <div class="section-head"><h3>C — Ancillary Structures</h3><span class="stotal num" id="stotal-ANC">0.00</span></div>
+    <div class="group open" data-secid="ANC">
+      <div class="group-head" style="cursor:default;">
+        <h4>Site &amp; ancillary works (lump sum items — e.g. septic tank, fence, guard house)</h4>
+        <div class="g-right"><span class="g-total num" id="anc-group-total">0.00</span></div>
+      </div>
+      <div class="group-body" style="display:block;">
+        <div id="ancRows"></div>
+        <button class="addrow-btn" id="addAncRow">+ Add ancillary item</button>
+      </div>
+    </div>`;
+  wrap.appendChild(ancEl);
+
+  ANCILLARY_DEFAULTS.forEach(a=> addAncillaryRow(a.desc, a.amt));
+
+  wrap.querySelectorAll('.group-head').forEach(h=>{
+    h.addEventListener('click', (e)=>{
+      const grp = h.closest('.group');
+      if(grp.dataset.secid === 'ANC') return;
+      grp.classList.toggle('open');
+    });
+  });
+  wrap.querySelectorAll('input.qty, input.rate').forEach(inp=> inp.addEventListener('input', recalcAll));
+  wrap.querySelectorAll('.addrow-btn[data-add]').forEach(btn=>{
+    btn.addEventListener('click', ()=> addCustomRow(btn.dataset.add, btn));
+  });
+  document.getElementById('addAncRow').addEventListener('click', ()=> addAncillaryRow('', 0));
+
+  wireTakeoffDelegation(wrap);
+}
+
+/* =======================================================================
+   TAKE-OFF & BAR SCHEDULE (quantity build-up) — mirrors the source
+   file's take-off sheet (No. x L x W x H lines) and bar schedule sheet
+   (Length x No. of bars x No. of members x unit weight), each summed
+   into a single quantity that feeds the BOQ.
+   ======================================================================= */
+function takeoffLineHtml(dims){
+  const fields = dims.map(d=> `<input type="number" step="any" class="to-dim" placeholder="${d}">`).join('');
+  return `<div class="to-line">
+      <input type="text" class="to-note" placeholder="Note (e.g. location / element)">
+      <div class="to-dims">${fields}</div>
+      <span class="to-lineresult num">0.00</span>
+      <button class="to-rmline" title="Remove line">✕</button>
+    </div>`;
+}
+
+function barLineHtml(dia){
+  const kgmField = dia
+    ? `<span class="bar-kgm-badge num" title="Standard deformed-bar unit weight = diameter² ÷ 162">Ø${dia}mm · ${barUnitWeight(dia).toFixed(3)} kg/m</span>`
+    : `<input type="number" step="any" class="bar-kgm" placeholder="kg/m">`;
+  return `<div class="to-line bar-line" data-dia="${dia||''}">
+      <input type="text" class="to-note" placeholder="Note (e.g. location / member)">
+      <div class="to-dims">
+        <input type="number" step="any" class="bar-len" placeholder="L (m)">
+        <input type="number" step="any" class="bar-nbar" placeholder="No. bars">
+        <input type="number" step="any" class="bar-nmember" placeholder="No. members">
+      </div>
+      ${kgmField}
+      <span class="to-lineresult num">0.00</span>
+      <button class="to-rmline" title="Remove line">✕</button>
+    </div>`;
+}
+
+function lineHtmlForPanel(panel){
+  if(panel.dataset.type === 'bar'){
+    const dia = parseFloat(panel.dataset.dia) || null;
+    return barLineHtml(dia);
+  }
+  return takeoffLineHtml(dimsForUnit(panel.dataset.unit));
+}
+
+function lineProduct(dimInputs){
+  const raw = dimInputs.map(i=> i.value.trim());
+  if(raw.every(v=> v==='')) return 0;
+  return raw.reduce((acc,v)=>{
+    const n = parseFloat(v);
+    return acc * (isNaN(n) ? 1 : n);
+  }, 1);
+}
+
+function finalizeTakeoffTotal(panel, total){
+  panel.querySelector('.to-total').textContent = fmt(total);
+  const key = panel.id.replace('to-','');
+  const row = document.querySelector(`.row[data-key="${key}"]`);
+  if(row){
+    const qtyInput = row.querySelector('.qty');
+    const hasLines = panel.querySelectorAll('.to-line').length > 0;
+    if(hasLines){
+      qtyInput.value = total;
+      qtyInput.readOnly = true;
+      qtyInput.classList.add('linked');
+    } else {
+      qtyInput.readOnly = false;
+      qtyInput.classList.remove('linked');
+    }
+  }
+  recalcAll();
+}
+
+function recomputeTakeoff(panel){
+  let total = 0;
+  if(panel.dataset.type === 'bar'){
+    panel.querySelectorAll('.to-line').forEach(line=>{
+      const dims = [line.querySelector('.bar-len'), line.querySelector('.bar-nbar'), line.querySelector('.bar-nmember')];
+      const totalLen = lineProduct(dims);
+      const dia = parseFloat(line.dataset.dia) || null;
+      const kgm = dia ? barUnitWeight(dia) : (parseFloat((line.querySelector('.bar-kgm')||{}).value) || 0);
+      const weight = totalLen * kgm;
+      line.querySelector('.to-lineresult').textContent = fmt(weight);
+      total += weight;
+    });
+  } else {
+    panel.querySelectorAll('.to-line').forEach(line=>{
+      const dimInputs = Array.from(line.querySelectorAll('.to-dim'));
+      const p = lineProduct(dimInputs);
+      line.querySelector('.to-lineresult').textContent = fmt(p);
+      total += p;
+    });
+  }
+  finalizeTakeoffTotal(panel, total);
+}
+
+function wireTakeoffDelegation(wrap){
+  wrap.addEventListener('click', (e)=>{
+    const tobtn = e.target.closest('.tobtn');
+    if(tobtn){
+      const panel = document.getElementById(`to-${tobtn.dataset.row}`);
+      const opening = !panel.classList.contains('open');
+      panel.classList.toggle('open');
+      tobtn.classList.toggle('active', opening);
+      if(opening && panel.querySelectorAll('.to-line').length === 0){
+        panel.querySelector('.to-lines').insertAdjacentHTML('beforeend', lineHtmlForPanel(panel));
+      }
+      return;
+    }
+    const addBtn = e.target.closest('.to-addline');
+    if(addBtn){
+      const panel = document.getElementById(`to-${addBtn.dataset.row}`);
+      panel.querySelector('.to-lines').insertAdjacentHTML('beforeend', lineHtmlForPanel(panel));
+      return;
+    }
+    const rmBtn = e.target.closest('.to-rmline');
+    if(rmBtn){
+      const panel = rmBtn.closest('.takeoff-panel');
+      rmBtn.closest('.to-line').remove();
+      recomputeTakeoff(panel);
+      return;
+    }
+    const clearBtn = e.target.closest('.to-clear');
+    if(clearBtn){
+      const panel = document.getElementById(`to-${clearBtn.dataset.row}`);
+      panel.querySelector('.to-lines').innerHTML = '';
+      panel.classList.remove('open');
+      const tobtn = wrap.querySelector(`.tobtn[data-row="${clearBtn.dataset.row}"]`);
+      if(tobtn) tobtn.classList.remove('active');
+      recomputeTakeoff(panel);
+      return;
+    }
+  });
+  wrap.addEventListener('input', (e)=>{
+    if(e.target.classList.contains('to-dim') || e.target.classList.contains('bar-len') ||
+       e.target.classList.contains('bar-nbar') || e.target.classList.contains('bar-nmember') ||
+       e.target.classList.contains('bar-kgm')){
+      recomputeTakeoff(e.target.closest('.takeoff-panel'));
+    }
+  });
+}
+
+function addCustomRow(gid, btnEl){
+  state.customCounter++;
+  const div = document.createElement('div');
+  div.className = 'row custom';
+  div.dataset.gi = gid; div.dataset.custom = '1';
+  div.innerHTML = `
+    <div class="cno num">+</div>
+    <div class="cdesc"><input type="text" class="customdesc" placeholder="Describe the item..."></div>
+    <div class="inline-mobile">
+      <input type="text" class="customunit" placeholder="Unit" style="width:60px;">
+      <input type="number" min="0" step="any" class="qty" placeholder="Qty">
+    </div>
+    <div class="inline-mobile">
+      <input type="number" min="0" step="any" class="rate" placeholder="Rate">
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <div class="camt num">0.00</div>
+      <button class="rmbtn" title="Remove">✕</button>
+    </div>`;
+  btnEl.parentElement.querySelector('.rowset').appendChild(div);
+  div.querySelectorAll('input').forEach(inp=> inp.addEventListener('input', recalcAll));
+  div.querySelector('.rmbtn').addEventListener('click', ()=>{ div.remove(); recalcAll(); });
+  recalcAll();
+}
+
+function addAncillaryRow(desc, amt){
+  const holder = document.getElementById('ancRows');
+  const div = document.createElement('div');
+  div.className = 'anc-row';
+  div.innerHTML = `
+    <input type="text" class="ancdesc" placeholder="Description (e.g. Septic tank & manhole)" value="${desc.replace(/"/g,'&quot;')}">
+    <input type="number" min="0" step="any" class="ancamt" placeholder="Amount" value="${amt || ''}">
+    <button class="rmbtn" title="Remove">✕</button>`;
+  holder.appendChild(div);
+  div.querySelectorAll('input').forEach(inp=> inp.addEventListener('input', recalcAll));
+  div.querySelector('.rmbtn').addEventListener('click', ()=>{ div.remove(); recalcAll(); });
+}
+
+function recalcAll(){
+  let grandItemsTotal = 0; // A + B
+  const secTotals = {};
+
+  BOQ.forEach(sec=>{ secTotals[sec.id] = 0; });
+
+  document.querySelectorAll('#sections .section').forEach(secEl=>{
+    if(secEl.id === 'sec-ANC') return;
+    const secId = secEl.id.replace('sec-','');
+    let secTotal = 0;
+    secEl.querySelectorAll('.group').forEach(grp=>{
+      let gTotal = 0;
+      grp.querySelectorAll('.row:not(.note)').forEach(row=>{
+        const qtyInp = row.querySelector('.qty');
+        const rateInp = row.querySelector('.rate');
+        const qty = parseFloat(qtyInp && qtyInp.value) || 0;
+        const rate = parseFloat(rateInp && rateInp.value) || 0;
+        const amt = qty * rate;
+        row.querySelector('.camt').textContent = fmt(amt);
+        gTotal += amt;
+      });
+      grp.querySelector('.g-total').textContent = fmt(gTotal);
+      secTotal += gTotal;
+    });
+    secTotals[secId] = secTotal;
+    document.getElementById(`stotal-${secId}`).textContent = fmt(secTotal);
+    const navamt = document.getElementById(`navamt-${secId}`);
+    if(navamt) navamt.textContent = fmt(secTotal);
+    grandItemsTotal += secTotal;
+  });
+
+  // Ancillary
+  let ancTotal = 0;
+  document.querySelectorAll('.anc-row').forEach(r=>{
+    const v = parseFloat(r.querySelector('.ancamt').value) || 0;
+    ancTotal += v;
+  });
+  document.getElementById('stotal-ANC').textContent = fmt(ancTotal);
+  document.getElementById('anc-group-total').textContent = fmt(ancTotal);
+  const navAnc = document.getElementById('navamt-ANC');
+  if(navAnc) navAnc.textContent = fmt(ancTotal);
+
+  const subTotal = grandItemsTotal + ancTotal;
+  const profitPct = parseFloat(document.getElementById('inProfitPct-d').value) || 0;
+  const overheadPct = parseFloat(document.getElementById('inOverheadPct-d').value) || 0;
+  const vatPct = parseFloat(document.getElementById('inVatPct-d').value) || 0;
+
+  const profitAmt = subTotal * (profitPct/100);
+  const overheadAmt = subTotal * (overheadPct/100);
+  const preVat = subTotal + profitAmt + overheadAmt;
+  const vatAmt = preVat * (vatPct/100);
+  const grandTotal = preVat + vatAmt;
+
+  const cur = currency();
+  const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = val; };
+
+  ['d','m'].forEach(suf=>{
+    BOQ.forEach(sec=> set(`sum-sec-${sec.id}-${suf}`, fmt(secTotals[sec.id])));
+    set(`sum-anc-${suf}`, fmt(ancTotal));
+    set(`sum-subtotal-${suf}`, fmt(subTotal));
+    set(`sum-profit-${suf}`, fmt(profitAmt));
+    set(`sum-overhead-${suf}`, fmt(overheadAmt));
+    set(`sum-prevat-${suf}`, fmt(preVat));
+    set(`sum-vat-${suf}`, fmt(vatAmt));
+    set(`sum-grand-${suf}`, fmt(grandTotal));
+  });
+  set('mGrandTotal', fmt(grandTotal));
+
+  document.querySelectorAll('.cur-lbl').forEach(el=> el.textContent = cur);
+
+  return {secTotals, ancTotal, subTotal, profitAmt, overheadAmt, vatAmt, grandTotal};
+}
+
+function summaryHtml(suf){
+  const secLines = BOQ.map(sec=>`
+    <div class="sline"><span>${sec.title}</span><b id="sum-sec-${sec.id}-${suf}" class="num">0.00</b></div>`).join('');
+  return `
+    <h4>Cost Summary</h4>
+    ${secLines}
+    <div class="sline"><span>Ancillary structures</span><b id="sum-anc-${suf}" class="num">0.00</b></div>
+    <div class="sline"><span>Sub-total</span><b id="sum-subtotal-${suf}" class="num">0.00</b></div>
+    <div class="sline pct-row"><span>Profit <input id="inProfitPct-${suf}" type="number" value="7" step="0.5">%</span><b id="sum-profit-${suf}" class="num">0.00</b></div>
+    <div class="sline pct-row"><span>Overhead <input id="inOverheadPct-${suf}" type="number" value="7" step="0.5">%</span><b id="sum-overhead-${suf}" class="num">0.00</b></div>
+    <div class="sline"><span>Total before VAT</span><b id="sum-prevat-${suf}" class="num">0.00</b></div>
+    <div class="sline pct-row"><span>VAT <input id="inVatPct-${suf}" type="number" value="15" step="0.5">%</span><b id="sum-vat-${suf}" class="num">0.00</b></div>
+    <div class="sline grand"><span>Grand Total (<span class="cur-lbl">ETB</span>)</span><b class="num" id="sum-grand-${suf}">0.00</b></div>
+  `;
+}
+
+function buildSummaryPanels(){
+  const desktop = document.createElement('div');
+  desktop.className = 'summary-desktop';
+  desktop.innerHTML = summaryHtml('d');
+  document.querySelector('.nav').appendChild(desktop);
+
+  document.getElementById('mobileBarBody').innerHTML = summaryHtml('m');
+
+  // Keep the desktop and mobile percentage inputs in sync (only one is ever visible).
+  ['Profit','Overhead','Vat'].forEach(name=>{
+    const d = document.getElementById(`in${name}Pct-d`);
+    const m = document.getElementById(`in${name}Pct-m`);
+    d.addEventListener('input', ()=>{ m.value = d.value; recalcAll(); });
+    m.addEventListener('input', ()=>{ d.value = m.value; recalcAll(); });
+  });
+}
+
+function wireGlobalControls(){
+  document.getElementById('fCurrency').addEventListener('input', recalcAll);
+
+  document.getElementById('btnPrint').addEventListener('click', ()=> window.print());
+  document.getElementById('btnReset').addEventListener('click', ()=>{
+    if(confirm('Reset all quantities, rates, take-offs and custom items? This cannot be undone.')){
+      document.querySelectorAll('input.qty, input.rate').forEach(i=> { i.value=''; i.readOnly=false; i.classList.remove('linked'); });
+      document.querySelectorAll('.takeoff-panel').forEach(p=>{ p.querySelector('.to-lines').innerHTML=''; p.classList.remove('open'); });
+      document.querySelectorAll('.tobtn').forEach(b=> b.classList.remove('active'));
+      document.querySelectorAll('.row.custom').forEach(r=> r.remove());
+      document.querySelectorAll('.anc-row').forEach(r=> r.remove());
+      ANCILLARY_DEFAULTS.forEach(a=> addAncillaryRow(a.desc, a.amt));
+      ['d','m'].forEach(suf=>{
+        document.getElementById(`inProfitPct-${suf}`).value = 7;
+        document.getElementById(`inOverheadPct-${suf}`).value = 7;
+        document.getElementById(`inVatPct-${suf}`).value = 15;
+      });
+      recalcAll();
+    }
+  });
+
+  function expandAll(){ document.querySelectorAll('.group').forEach(g=> g.classList.add('open')); }
+  function collapseAll(){ document.querySelectorAll('.group').forEach(g=>{ if(g.dataset.secid!=='ANC') g.classList.remove('open'); }); }
+  document.getElementById('btnExpandAll').addEventListener('click', expandAll);
+  document.getElementById('btnExpandAll2').addEventListener('click', expandAll);
+  document.getElementById('btnCollapseAll').addEventListener('click', collapseAll);
+
+  document.getElementById('mobileBarHead').addEventListener('click', ()=>{
+    document.getElementById('mobileBar').classList.toggle('open');
+  });
+
+  document.getElementById('btnExcel').addEventListener('click', exportExcel);
+
+  document.querySelectorAll('.tb-field input').forEach(inp=> inp.addEventListener('input', ()=>{}));
+}
+
+function gatherReportModel(){
+  const model = { sections: [], ancillary: [] };
+  document.querySelectorAll('#sections .section').forEach(secEl=>{
+    if(secEl.id === 'sec-ANC') return;
+    const secTitle = secEl.querySelector('.section-head h3').textContent;
+    const secTotal = parseFloat(secEl.querySelector('.stotal').textContent.replace(/,/g,'')) || 0;
+    const groups = [];
+    secEl.querySelectorAll('.group').forEach(grp=>{
+      const gTitle = grp.querySelector('h4').textContent;
+      const gTotal = parseFloat(grp.querySelector('.g-total').textContent.replace(/,/g,'')) || 0;
+      const rows = [];
+      grp.querySelectorAll('.row').forEach(row=>{
+        if(row.classList.contains('note')){
+          rows.push({type:'note', text: row.textContent.trim()});
+          return;
+        }
+        const isCustom = row.classList.contains('custom');
+        const no = isCustom ? '' : row.querySelector('.cno').textContent;
+        const desc = isCustom ? row.querySelector('.customdesc').value : row.querySelector('.cdesc').textContent;
+        const unit = isCustom ? row.querySelector('.customunit').value : row.querySelector('.cunit').textContent;
+        const qty = parseFloat(row.querySelector('.qty').value) || 0;
+        const rate = parseFloat(row.querySelector('.rate').value) || 0;
+        rows.push({type:'item', no, desc, unit, qty, rate, amt: qty*rate});
+      });
+      groups.push({title:gTitle, total:gTotal, rows});
+    });
+    model.sections.push({title:secTitle, total:secTotal, groups});
+  });
+  document.querySelectorAll('.anc-row').forEach(r=>{
+    model.ancillary.push({
+      desc: r.querySelector('.ancdesc').value || 'Ancillary item',
+      amt: parseFloat(r.querySelector('.ancamt').value) || 0
+    });
+  });
+  return model;
+}
+
+async function exportExcel(){
+  const btn = document.getElementById('btnExcel');
+  if(typeof ExcelJS === 'undefined'){
+    alert('The Excel export engine could not load (needs an internet connection the first time). Try again when online, or use Print / PDF instead.');
+    return;
+  }
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Building…'; btn.disabled = true;
+  try{
+    const cur = currency();
+    const model = gatherReportModel();
+    const vals = recalcAll();
+    const ancTotal = model.ancillary.reduce((a,b)=> a+b.amt, 0);
+
+    const NAVY='FF0F2C4C', NAVY2='FF17385A', GROUPFILL='FFE7ECEF', NOTEFILL='FFFBFCFD',
+          ZEBRA='FFF6F8FA', AMBER='FFE3A008', BORDER='FFD7E1EA', WHITE='FFFFFFFF', INK='FF101820', SOFT='FF5B6B7C';
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Bill of Quantities Calculator';
+    wb.created = new Date();
+    const ws = wb.addWorksheet('Bill of Quantities', {
+      pageSetup: { fitToWidth:1, fitToHeight:0, orientation:'portrait', margins:{left:0.4,right:0.4,top:0.5,bottom:0.5,header:0.2,footer:0.2} },
+      views: [{ showGridLines:false }]
+    });
+    ws.columns = [
+      { key:'no', width:9 }, { key:'desc', width:62 }, { key:'unit', width:8 },
+      { key:'qty', width:12 }, { key:'rate', width:13 }, { key:'amt', width:16 },
+    ];
+
+    const thinBorder = { bottom:{style:'thin', color:{argb:BORDER}} };
+    function paint(rowIdx, {bold, italic, size, color, fill, align, border}={}){
+      const row = ws.getRow(rowIdx);
+      row.eachCell({includeEmpty:true}, cell=>{
+        cell.font = { name:'Calibri', size: size||10.5, bold: !!bold, italic: !!italic, color:{argb: color||INK} };
+        cell.alignment = Object.assign({ vertical:'middle', wrapText:true }, align||{});
+        if(fill) cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:fill} };
+        cell.border = border===false ? {} : thinBorder;
+      });
+    }
+    function money(cell, value){ cell.value = value; cell.numFmt = '#,##0.00'; cell.alignment = {horizontal:'right', vertical:'middle'}; }
+
+    let r = 1;
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = 'BILL OF QUANTITIES';
+    paint(r, {bold:true, size:16, color:WHITE, fill:NAVY});
+    ws.getRow(r).height = 26; r++;
+
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = `Universal building cost estimate — generated ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`;
+    paint(r, {italic:true, size:9, color:SOFT, border:false}); r += 2;
+
+    const fields = [
+      ['Project', val('fProject')], ['Location', val('fLocation')], ['Client', val('fClient')],
+      ['Contractor', val('fContractor')], ['Consultant', val('fConsultant')], ['Currency', cur],
+    ];
+    fields.forEach(([label, value])=>{
+      ws.mergeCells(`A${r}:B${r}`);
+      const lc = ws.getCell(`A${r}`); lc.value = label;
+      lc.font = { bold:true, size:9, color:{argb:SOFT} }; lc.border = thinBorder;
+      ws.mergeCells(`C${r}:F${r}`);
+      const vc = ws.getCell(`C${r}`); vc.value = value || '—';
+      vc.font = { size:10.5, color:{argb:INK} }; vc.border = thinBorder;
+      r++;
+    });
+    r++;
+
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = 'COST SUMMARY';
+    paint(r, {bold:true, size:11, color:WHITE, fill:NAVY2}); r++;
+
+    const summaryLines = [
+      [model.sections[0] ? model.sections[0].title : 'A — Sub-Structure', model.sections[0] ? model.sections[0].total : 0],
+      [model.sections[1] ? model.sections[1].title : 'B — Super-Structure', model.sections[1] ? model.sections[1].total : 0],
+      ['Ancillary structures', ancTotal],
+      ['Sub-total', vals.subTotal],
+      [`Profit (${val('inProfitPct-d')}%)`, vals.profitAmt],
+      [`Overhead (${val('inOverheadPct-d')}%)`, vals.overheadAmt],
+      ['Total before VAT', vals.subTotal + vals.profitAmt + vals.overheadAmt],
+      [`VAT (${val('inVatPct-d')}%)`, vals.vatAmt],
+    ];
+    summaryLines.forEach(([label, amt])=>{
+      ws.mergeCells(`A${r}:D${r}`);
+      ws.getCell(`A${r}`).value = label;
+      ws.getCell(`A${r}`).font = { size:10.5, color:{argb:INK} };
+      ws.getCell(`A${r}`).border = thinBorder;
+      ws.mergeCells(`E${r}:F${r}`);
+      money(ws.getCell(`E${r}`), amt);
+      ws.getCell(`E${r}`).border = thinBorder;
+      r++;
+    });
+    ws.mergeCells(`A${r}:D${r}`);
+    ws.getCell(`A${r}`).value = `GRAND TOTAL (${cur})`;
+    ws.mergeCells(`E${r}:F${r}`);
+    money(ws.getCell(`E${r}`), vals.grandTotal);
+    ws.getCell(`E${r}`).font = { bold:true, size:13, color:{argb:AMBER} };
+    paint(r, {bold:true, size:13, color:WHITE, fill:NAVY});
+    ws.getCell(`E${r}`).fill = { type:'pattern', pattern:'solid', fgColor:{argb:NAVY} };
+    ws.getRow(r).height = 22; r += 2;
+
+    ws.getRow(r).values = ['Item No','Description','Unit','Qty','Rate',`Amount (${cur})`];
+    paint(r, {bold:true, color:WHITE, fill:NAVY});
+    ws.views = [{ showGridLines:false, state:'frozen', ySplit:r }];
+    r++;
+
+    model.sections.forEach(sec=>{
+      ws.mergeCells(`A${r}:E${r}`);
+      ws.getCell(`A${r}`).value = sec.title;
+      money(ws.getCell(`F${r}`), sec.total);
+      ws.getCell(`F${r}`).font = { bold:true, size:11.5, color:{argb:WHITE} };
+      paint(r, {bold:true, size:11.5, color:WHITE, fill:NAVY2}); r++;
+
+      sec.groups.forEach(g=>{
+        ws.mergeCells(`A${r}:E${r}`);
+        ws.getCell(`A${r}`).value = '   ' + g.title;
+        money(ws.getCell(`F${r}`), g.total);
+        ws.getCell(`F${r}`).font = { bold:true, size:10.5, color:{argb:INK} };
+        paint(r, {bold:true, fill:GROUPFILL}); r++;
+
+        let zebra = false;
+        g.rows.forEach(row=>{
+          if(row.type === 'note'){
+            ws.mergeCells(`A${r}:F${r}`);
+            ws.getCell(`A${r}`).value = '   ' + row.text;
+            paint(r, {italic:true, size:9.5, color:SOFT, fill:NOTEFILL});
+          } else {
+            ws.getRow(r).values = [row.no, row.desc, row.unit, row.qty, row.rate, row.amt];
+            paint(r, { fill: zebra ? ZEBRA : undefined });
+            ws.getCell(`C${r}`).alignment = { horizontal:'center', vertical:'middle' };
+            ws.getCell(`D${r}`).numFmt = '#,##0.00'; ws.getCell(`D${r}`).alignment = {horizontal:'right', vertical:'middle'};
+            ws.getCell(`E${r}`).numFmt = '#,##0.00'; ws.getCell(`E${r}`).alignment = {horizontal:'right', vertical:'middle'};
+            ws.getCell(`F${r}`).numFmt = '#,##0.00'; ws.getCell(`F${r}`).alignment = {horizontal:'right', vertical:'middle'};
+            ws.getCell(`F${r}`).font = { bold:true, size:10.5, color:{argb:NAVY} };
+            zebra = !zebra;
+          }
+          r++;
+        });
+      });
+    });
+
+    ws.mergeCells(`A${r}:E${r}`);
+    ws.getCell(`A${r}`).value = 'C — Ancillary Structures';
+    money(ws.getCell(`F${r}`), ancTotal);
+    ws.getCell(`F${r}`).font = { bold:true, size:11.5, color:{argb:WHITE} };
+    paint(r, {bold:true, size:11.5, color:WHITE, fill:NAVY2}); r++;
+    model.ancillary.forEach(a=>{
+      ws.mergeCells(`A${r}:E${r}`);
+      ws.getCell(`A${r}`).value = a.desc;
+      money(ws.getCell(`F${r}`), a.amt);
+      ws.getCell(`F${r}`).font = { size:10.5, color:{argb:NAVY} };
+      paint(r); r++;
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const projectName = (val('fProject') || 'BOQ').replace(/[^a-z0-9]+/gi,'_');
+    a.href = url; a.download = `${projectName}_BOQ.xlsx`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(err){
+    console.error(err);
+    alert('Something went wrong building the Excel file. Please try again.');
+  } finally {
+    btn.textContent = originalLabel; btn.disabled = false;
+  }
+}
+
+/* Scroll-spy for nav */
+function wireScrollSpy(){
+  const links = Array.from(document.querySelectorAll('#navList a'));
+  const targets = links.map(l=> document.getElementById(l.dataset.target)).filter(Boolean);
+  window.addEventListener('scroll', ()=>{
+    let current = targets[0];
+    for(const t of targets){ if(t.getBoundingClientRect().top - 90 <= 0) current = t; }
+    links.forEach(l=> l.classList.toggle('active', current && l.dataset.target === current.id));
+  }, {passive:true});
+}
+
+/* Init */
+document.getElementById('sheetDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+buildNav();
+buildSections();
+buildSummaryPanels();
+wireGlobalControls();
+wireScrollSpy();
+recalcAll();
+</script>
+</body>
+</html>

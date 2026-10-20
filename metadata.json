@@ -1,0 +1,8 @@
+{
+  "name": "Bill of Quantities — Building Cost Estimator",
+  "description": "Professional Bill of Quantities (BOQ) and building construction cost estimating app with interactive measurement take-off, reinforcement bar schedules, markup & tax controls, and Excel/PDF export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
